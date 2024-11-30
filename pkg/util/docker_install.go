@@ -3,9 +3,11 @@ package util
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 )
 
+// InstallDocker handles the Docker installation process
 func InstallDocker() {
 	fmt.Println("Starting Docker installation...")
 
@@ -27,36 +29,66 @@ func InstallDocker() {
 		{"sudo", "apt-get", "install", "-y", "docker-ce", "docker-ce-cli", "containerd.io", "docker-buildx-plugin", "docker-compose-plugin"},
 	}
 
-	for _, cmd := range commands {
+	for i, cmd := range commands {
+		fmt.Printf("Step %d: Executing command: %v\n", i+1, cmd)
 		if err := executeCommand(cmd); err != nil {
-			log.Fatalf("Failed to execute command: %v", err)
+			log.Fatalf("Failed to execute command: %v\n", err)
 		}
 	}
 
 	// Step 3: Post-installation setup
 	fmt.Println("Configuring Docker post-installation...")
-	postInstallCommands := [][]string{
-		{"sudo", "groupadd", "docker"},
-		{"sudo", "usermod", "-aG", "docker", "$USER"},
-		{"newgrp", "docker"},
-		{"sudo", "systemctl", "enable", "docker.service"},
-		{"sudo", "systemctl", "enable", "containerd.service"},
+	postInstallCommands := [][]string{}
+
+	// Check if docker group exists
+	if groupExists("docker") {
+		fmt.Println("Docker group already exists. Skipping group creation.")
+	} else {
+		fmt.Println("Creating docker group...")
+		postInstallCommands = append(postInstallCommands, []string{"sudo", "groupadd", "docker"})
 	}
 
-	for _, cmd := range postInstallCommands {
+	// Add user to the docker group (expand $USER)
+	currentUser := os.Getenv("USER")
+	if currentUser == "" {
+		log.Fatal("Failed to detect the current user.")
+	}
+	fmt.Printf("Adding user '%s' to the docker group...\n", currentUser)
+	postInstallCommands = append(postInstallCommands, []string{"sudo", "usermod", "-aG", "docker", currentUser})
+
+	// Activate new group membership
+	postInstallCommands = append(postInstallCommands, []string{"newgrp", "docker"})
+
+	// Enable Docker services
+	postInstallCommands = append(postInstallCommands, []string{"sudo", "systemctl", "enable", "docker.service"})
+	postInstallCommands = append(postInstallCommands, []string{"sudo", "systemctl", "enable", "containerd.service"})
+
+	for i, cmd := range postInstallCommands {
+		fmt.Printf("Post-installation Step %d: Executing command: %v\n", i+1, cmd)
 		if err := executeCommand(cmd); err != nil {
-			log.Fatalf("Failed to execute command: %v", err)
+			log.Fatalf("Failed to execute post-installation command: %v\n", err)
 		}
 	}
 
+	// Verify Docker installation
 	fmt.Println("Verifying Docker installation...")
 	if err := executeCommand([]string{"docker", "run", "hello-world"}); err != nil {
-		log.Fatalf("Docker verification failed: %v", err)
+		log.Fatalf("Docker verification failed: %v\n", err)
 	}
 
 	fmt.Println("Docker installed successfully!")
 }
 
+// groupExists checks if a system group exists
+func groupExists(group string) bool {
+	cmd := exec.Command("getent", "group", group)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
+}
+
+// executeCommand runs a command and prints its output
 func executeCommand(cmd []string) error {
 	command := exec.Command(cmd[0], cmd[1:]...)
 	command.Stdout = nil
