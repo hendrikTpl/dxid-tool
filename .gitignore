@@ -1,0 +1,24 @@
+# Binaries
+dxid
+
+# Dependency directories
+/vendor/
+/dist/
+
+# Build artifacts
+*.exe
+*.out
+*.o
+*.a
+*.so
+
+# Go-specific
+*.test
+*.mod
+*.sum
+
+# IDE and OS-specific files
+.idea/
+.vscode/
+.DS_Store
+*.log
