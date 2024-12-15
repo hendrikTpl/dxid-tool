@@ -18,6 +18,10 @@ func main() {
 	installCmd := flag.NewFlagSet("install", flag.ExitOnError)
 	installTarget := installCmd.String("target", "", "Specify the target to install (e.g., 'docker')")
 
+	// Define validate subcommand
+	validateCmd := flag.NewFlagSet("validate", flag.ExitOnError)
+	validateRTSPURL := validateCmd.String("url", "", "RTSP URL to validate (e.g., rtsp://user:pass@ip:port/path)")
+
 	// Parse global flags
 	flag.Parse()
 
@@ -40,6 +44,13 @@ func main() {
 			log.Fatal("Please specify a target using --target")
 		}
 		InstallCommand(*installTarget)
+	case "validate":
+		validateCmd.Parse(os.Args[2:])
+		if *validateRTSPURL == "" {
+			log.Fatal("Please specify an RTSP URL using --url")
+		}
+		ValidateCommand(*validateRTSPURL)
+
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		showHelp()
@@ -52,6 +63,7 @@ func showHelp() {
 	fmt.Println("Usage: dxid <command> [options]")
 	fmt.Println("\nCommands:")
 	fmt.Println("  install       Install software (e.g., Docker)")
+	fmt.Println("  validate      Validate an RTSP stream")
 
 	fmt.Println("\nGlobal Flags:")
 	fmt.Println("  --version     Show the version of the tool")
@@ -60,4 +72,19 @@ func showHelp() {
 	fmt.Println("\nExamples:")
 	fmt.Println("  dxid --version")
 	fmt.Println("  dxid install --target docker")
+	fmt.Println("  dxid validate --url rtsp://user:pass@ip:port/path")
+}
+
+// ValidateCommand handles the validate subcommand
+func ValidateCommand(rtspURL string) {
+	fmt.Printf("Validating RTSP stream: %s...\n", rtspURL)
+	// Call validation logic from util package
+	result, err := ValidateRTSP(rtspURL)
+	if err != nil {
+		log.Fatalf("RTSP validation failed: %v\n", err)
+	}
+	fmt.Println("RTSP validation successful!")
+	fmt.Printf("Resolution: %s\n", result.Resolution)
+	fmt.Printf("Codec: %s\n", result.Codec)
+	fmt.Printf("Frame captured at: %s\n", result.FramePath)
 }
